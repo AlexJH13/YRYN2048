@@ -1,2 +1,5 @@
 *.xcuserstate
 *.DS_Store
+YRYN/frameworks/runtime-src/proj.ios_mac/YRYN.xcodeproj/*
+YRYN/frameworks/cocos2d-x/cocos/scripting/lua-bindings/proj.ios_mac/cocos2d_lua_bindings.xcodeproj/*
+YRYN/frameworks/cocos2d-x/build/cocos2d_libs.xcodeproj/*
