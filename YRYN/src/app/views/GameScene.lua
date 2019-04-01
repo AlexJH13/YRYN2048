@@ -5,6 +5,13 @@
 ]]
 local GameScene = class("GameScene", cc.load("mvc").ViewBase)
 
+GameScene.Direction = {
+    UP = 0,
+    DOWN = 1,
+    LEFT = 2,
+    RIGHT = 3
+}
+
 function GameScene:onCreate()
     self._config = require("app.GameConfig"):create()
     self._vSize = cc.Director:getInstance():getVisibleSize()
@@ -27,14 +34,6 @@ function GameScene:gameStart()
     for i = 1, 2 do
         self:addNewCell()
     end
-
-    -- for i = 1, 4 do
-    --     local cellSp = self:createValueCell(2)
-    --     cellSp:setPosition(self:getCellPosition(1, i))
-    --     self._gameBg:addChild(cellSp)
-    --     self._cellValueMatrix[1][i] = 2
-    --     self._cellMatrix[1][i] = cellSp
-    -- end
    
     self:startGestureListen()
 end
@@ -47,7 +46,8 @@ function GameScene:testMoveUI()
     local menu = cc.Menu:create()
     local menuItemLeft = cc.MenuItemFont:create("Left")
     local function left(sender)
-        self:moveToLeft()
+        -- self:moveToLeft()
+        self:move(GameScene.Direction.LEFT)
         self:addNewCell()
     end
     menuItemLeft:registerScriptTapHandler(left)
@@ -56,7 +56,9 @@ function GameScene:testMoveUI()
 
     local menuItemRight = cc.MenuItemFont:create("Right")
     local function right(sender)
-        self:moveToRight()
+        -- self:moveToRight()
+        self:move(GameScene.Direction.RIGHT)
+        self:addNewCell()
     end
     menuItemRight:registerScriptTapHandler(right)
     menuItemRight:setPosition(200, 100)
@@ -83,12 +85,126 @@ function GameScene:testMoveUI()
     self._gameBg:addChild(menu)
 end
 
+function GameScene:move(direction)
+    --将两个矩阵的值更新，并将动画参数储存
+    self:initMoveData(direction)
+    --判断是否有合并的情况
+    self:initMergeData(direction)
+    self:checkAndRunMove()
+    --合并后还要检查一次是否还能移动
+    self:initMoveData(direction)
+    self._mergeList = {}
+    self:checkAndRunMove()
+
+end
+
+function GameScene:initMoveData(direction)
+    self._moveList = {}
+    local rowStart = 0
+    local rowEnd = 0
+    local rowAdd = 0
+
+    local columnStart = 0
+    local columnEnd = 0
+    local columnAdd = 0
+
+    if direction == GameScene.Direction.LEFT then
+        rowStart = 1
+        rowEnd = 4
+        rowAdd = 1
+        columnStart = 1
+        columnEnd = 4
+        columnAdd = 1
+    elseif direction == GameScene.Direction.RIGHT then
+        rowStart = 1
+        rowEnd = 4
+        rowAdd = 1
+        columnStart = 4
+        columnEnd = 1
+        columnAdd = -1
+    elseif direction == GameScene.Direction.UP then
+        -- rowStart = 1
+        -- rowEnd = 4
+        -- rowAdd = 1
+        -- columnStart = 1
+        -- columnEnd = 4
+        -- columnAdd = 1
+    elseif direction == GameScene.Direction.DOWN then
+        -- rowStart = 1
+        -- rowEnd = 4
+        -- rowAdd = 1
+        -- columnStart = 1
+        -- columnEnd = 4
+        -- columnAdd = 1
+    end
+
+    
+
+    for row = rowStart, rowEnd, rowAdd do
+        for column = columnStart, columnEnd, columnAdd do
+            if self._cellValueMatrix[row][column] ~= 0 then
+                self:checkMoveDataLogic(row, column, direction)
+            end
+        end
+    end
+end
+
+function GameScene:checkMoveDataLogic(row, column, direction)
+    local moveToColumn = column
+    local columnStart = 0
+
+    local ciStart = 0
+    local ciEnd = 0
+    local ciAdd = 0
+
+    if direction == GameScene.Direction.LEFT then
+        columnStart = 1
+        ciStart = column - 1
+        ciEnd = 1
+        ciAdd = -1
+    elseif direction == GameScene.Direction.RIGHT then
+        columnStart = 4
+        ciStart = column + 1
+        ciEnd = 4
+        ciAdd = 1
+    end
+
+    if column ~= columnStart then
+        for ci = ciStart, ciEnd, ciAdd do
+            if self._cellValueMatrix[row][ci] == 0 then
+                moveToColumn = ci
+            end
+        end
+    end
+
+    if moveToColumn ~= column then
+        local move = {}
+        move.cell = self._cellMatrix[row][column]
+        move.targetIdx = {
+            row = row,
+            column = moveToColumn
+        }
+        move.merge = false
+        table.insert( self._moveList, move)
+        self._cellValueMatrix[row][moveToColumn] = self._cellValueMatrix[row][column]
+        self._cellMatrix[row][moveToColumn] = self._cellMatrix[row][column]
+        self._cellValueMatrix[row][column] = 0
+        self._cellMatrix[row][column] = nil 
+    end
+end
+
+
+function GameScene:initMergeData(direction)
+    -- body
+end
+
 function GameScene:moveToLeft()
     --往左移的将两个矩阵的值更新，并将动画参数储存
     self:initMoveLeftData()
     --判断是否有合并的情况
     self:initMergeData()
     self:checkAndRunMove()
+    --合并后还要检查一次是否还能移动
     self:initMoveLeftData()
     self._mergeList = {}
     self:checkAndRunMove()
@@ -143,7 +259,6 @@ function GameScene:initMergeData()
                 if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row][column + 1] then
                     self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
                     self._cellValueMatrix[row][column + 1] = 0
-                    -- local doubleCell = self._cellMatrix[row][column]
                     local doubleCell = {
                         row = row,
                         column = column
@@ -168,10 +283,6 @@ function GameScene:initMergeData()
 end
 
 function GameScene:checkAndRunMove()
-    dump(self._moveList, "moveList")
-    dump(self._cellMatrix, "_cellMatrix")
-    dump(self._mergeList, "mergeList")
-    dump(self._cellValueMatrix, "cellValueMatrix")
     for k,v in pairs(self._moveList) do
         local targetPos = self:getCellPosition(v.targetIdx.row, v.targetIdx.column)
         local targetCellSp = v.cell
