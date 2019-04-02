@@ -66,7 +66,8 @@ function GameScene:testMoveUI()
 
     local menuItemUp = cc.MenuItemFont:create("Up")
     local function up(sender)
-        self:moveToUp()
+        -- self:moveToUp()
+        self:move(GameScene.Direction.UP)
     end
     menuItemUp:registerScriptTapHandler(up)
     menuItemUp:setPosition(150, 150)
@@ -74,7 +75,8 @@ function GameScene:testMoveUI()
 
     local menuItemDown = cc.MenuItemFont:create("Down")
     local function down(sender)
-        self:moveToDown()
+        -- self:moveToDown()
+        self:move(GameScene.Direction.DOWN)
     end
     menuItemDown:registerScriptTapHandler(down)
     menuItemDown:setPosition(150, 50)
@@ -123,79 +125,240 @@ function GameScene:initMoveData(direction)
         columnEnd = 1
         columnAdd = -1
     elseif direction == GameScene.Direction.UP then
-        -- rowStart = 1
-        -- rowEnd = 4
-        -- rowAdd = 1
-        -- columnStart = 1
-        -- columnEnd = 4
-        -- columnAdd = 1
+        rowStart = 1
+        rowEnd = 4
+        rowAdd = 1
+        columnStart = 1
+        columnEnd = 4
+        columnAdd = 1
     elseif direction == GameScene.Direction.DOWN then
-        -- rowStart = 1
-        -- rowEnd = 4
-        -- rowAdd = 1
-        -- columnStart = 1
-        -- columnEnd = 4
-        -- columnAdd = 1
+        rowStart = 4
+        rowEnd = 1
+        rowAdd = -1
+        columnStart = 1
+        columnEnd = 4
+        columnAdd = 1
     end
 
-    
-
-    for row = rowStart, rowEnd, rowAdd do
+    if direction == GameScene.Direction.LEFT or direction == GameScene.Direction.RIGHT then
+        for row = rowStart, rowEnd, rowAdd do
+            for column = columnStart, columnEnd, columnAdd do
+                if self._cellValueMatrix[row][column] ~= 0 then
+                    self:checkMoveDataLogic(row, column, direction)
+                    break
+                end
+            end
+        end
+    elseif direction == GameScene.Direction.UP or direction == GameScene.Direction.DOWN then
         for column = columnStart, columnEnd, columnAdd do
-            if self._cellValueMatrix[row][column] ~= 0 then
-                self:checkMoveDataLogic(row, column, direction)
+            for row = rowStart, rowEnd, rowAdd do
+                if self._cellValueMatrix[row][column] ~= 0 then
+                    self:checkMoveDataLogic(row, column, direction)
+                    break
+                end
             end
         end
     end
 end
 
 function GameScene:checkMoveDataLogic(row, column, direction)
-    local moveToColumn = column
-    local columnStart = 0
-
     local ciStart = 0
     local ciEnd = 0
     local ciAdd = 0
+    if direction == GameScene.Direction.LEFT or direction == GameScene.Direction.RIGHT then
+        local moveToColumn = column
+        local columnStart = 0
 
-    if direction == GameScene.Direction.LEFT then
-        columnStart = 1
-        ciStart = column - 1
-        ciEnd = 1
-        ciAdd = -1
-    elseif direction == GameScene.Direction.RIGHT then
-        columnStart = 4
-        ciStart = column + 1
-        ciEnd = 4
-        ciAdd = 1
-    end
+        if direction == GameScene.Direction.LEFT then
+            columnStart = 1
+            ciStart = column - 1
+            ciEnd = 1
+            ciAdd = -1
+        elseif direction == GameScene.Direction.RIGHT then
+            columnStart = 4
+            ciStart = column + 1
+            ciEnd = 4
+            ciAdd = 1
+        end
 
-    if column ~= columnStart then
-        for ci = ciStart, ciEnd, ciAdd do
-            if self._cellValueMatrix[row][ci] == 0 then
-                moveToColumn = ci
+        if column ~= columnStart then
+            for ci = ciStart, ciEnd, ciAdd do
+                if self._cellValueMatrix[row][ci] == 0 then
+                    moveToColumn = ci
+                end
             end
         end
-    end
 
-    if moveToColumn ~= column then
-        local move = {}
-        move.cell = self._cellMatrix[row][column]
-        move.targetIdx = {
-            row = row,
-            column = moveToColumn
-        }
-        move.merge = false
-        table.insert( self._moveList, move)
-        self._cellValueMatrix[row][moveToColumn] = self._cellValueMatrix[row][column]
-        self._cellMatrix[row][moveToColumn] = self._cellMatrix[row][column]
-        self._cellValueMatrix[row][column] = 0
-        self._cellMatrix[row][column] = nil 
+        if moveToColumn ~= column then
+            local move = {}
+            move.cell = self._cellMatrix[row][column]
+            move.targetIdx = {
+                row = row,
+                column = moveToColumn
+            }
+            move.merge = false
+            table.insert( self._moveList, move)
+            self._cellValueMatrix[row][moveToColumn] = self._cellValueMatrix[row][column]
+            self._cellMatrix[row][moveToColumn] = self._cellMatrix[row][column]
+            self._cellValueMatrix[row][column] = 0
+            self._cellMatrix[row][column] = nil 
+        end
+    elseif direction == GameScene.Direction.UP or direction == GameScene.Direction.DOWN then
+        local moveToRow = row
+        local rowStart = 0
+        if direction == GameScene.Direction.UP then
+            rowStart = 1
+            ciStart = row - 1
+            ciEnd = 1
+            ciAdd = -1
+        elseif direction == GameScene.Direction.DOWN then
+            rowStart = 4
+            ciStart = row + 1
+            ciEnd = 4
+            ciAdd = 1
+        end
+
+        if row ~= rowStart then
+            for ci = ciStart, ciEnd, ciAdd do
+                if self._cellValueMatrix[ci][column] == 0 then
+                    moveToRow = ci
+                end
+            end
+        end
+
+        if moveToRow ~= row then
+            local move = {}
+            move.cell = self._cellMatrix[row][column]
+            move.targetIdx = {
+                row = moveToRow,
+                column = column
+            }
+            move.merge = false
+            table.insert( self._moveList, move)
+            self._cellValueMatrix[moveToRow][column] = self._cellValueMatrix[row][column]
+            self._cellMatrix[moveToRow][column] = self._cellMatrix[row][column]
+            self._cellValueMatrix[row][column] = 0
+            self._cellMatrix[row][column] = nil 
+        end
     end
 end
 
 
 function GameScene:initMergeData(direction)
-    -- body
+    self._mergeList = {}
+    if direction == GameScene.Direction.LEFT then
+        for row = 1, 4 do
+            for column = 1, 4 do
+                if column ~= 4 then
+                    if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row][column + 1] then
+                        self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
+                        self._cellValueMatrix[row][column + 1] = 0
+                        local doubleCell = {
+                            row = row,
+                            column = column
+                        }
+                        local findMoveCell = false
+                        for k,v in pairs(self._moveList) do
+                            if v.targetIdx.row == row and v.targetIdx.column == column + 1 then
+                                v.merge = true
+                                findMoveCell = true
+                                break
+                            end
+                        end
+                        if not findMoveCell then
+                            self._cellMatrix[row][column + 1]:removeFromParent()
+                        end
+                        table.insert(self._mergeList, doubleCell)
+                        self._cellMatrix[row][column + 1] = nil
+                    end
+                end
+            end
+        end
+    elseif direction == GameScene.Direction.RIGHT then
+        for row = 1, 4 do
+            for column = 4, 1 do
+                if column ~= 1 then
+                    if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row][column - 1] then
+                        self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
+                        self._cellValueMatrix[row][column - 1] = 0
+                        local doubleCell = {
+                            row = row,
+                            column = column
+                        }
+                        local findMoveCell = false
+                        for k,v in pairs(self._moveList) do
+                            if v.targetIdx.row == row and v.targetIdx.column == column - 1 then
+                                v.merge = true
+                                findMoveCell = true
+                                break
+                            end
+                        end
+                        if not findMoveCell then
+                            self._cellMatrix[row][column - 1]:removeFromParent()
+                        end
+                        table.insert(self._mergeList, doubleCell)
+                        self._cellMatrix[row][column - 1] = nil
+                    end
+                end
+            end
+        end
+    elseif direction == GameScene.Direction.UP then
+        for column = 1, 4 do
+            for row = 1, 4 do
+                if row ~= 4 then
+                    if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row + 1][column] then
+                        self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
+                        self._cellValueMatrix[row + 1][column] = 0
+                        local doubleCell = {
+                            row = row,
+                            column = column
+                        }
+                        local findMoveCell = false
+                        for k,v in pairs(self._moveList) do
+                            if v.targetIdx.row == row + 1 and v.targetIdx.column == column then
+                                v.merge = true
+                                findMoveCell = true
+                                break
+                            end
+                        end
+                        if not findMoveCell then
+                            self._cellMatrix[row + 1][column]:removeFromParent()
+                        end
+                        table.insert(self._mergeList, doubleCell)
+                        self._cellMatrix[row + 1][column] = nil
+                    end
+                end
+            end
+        end
+    elseif direction == GameScene.Direction.DOWN then
+        for column = 1, 4 do
+            for row = 4, 1 do
+                if row ~= 1 then
+                    if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row - 1][column] then
+                        self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
+                        self._cellValueMatrix[row - 1][column] = 0
+                        local doubleCell = {
+                            row = row,
+                            column = column
+                        }
+                        local findMoveCell = false
+                        for k,v in pairs(self._moveList) do
+                            if v.targetIdx.row == row - 1 and v.targetIdx.column == column then
+                                v.merge = true
+                                findMoveCell = true
+                                break
+                            end
+                        end
+                        if not findMoveCell then
+                            self._cellMatrix[row - 1][column]:removeFromParent()
+                        end
+                        table.insert(self._mergeList, doubleCell)
+                        self._cellMatrix[row - 1][column] = nil
+                    end
+                end
+            end
+        end
+    end
 end
 
 function GameScene:moveToLeft()
@@ -251,7 +414,7 @@ function GameScene:initMoveLeftData()
     end
 end
 
-function GameScene:initMergeData()
+function GameScene:initMergeDataLeft()
     self._mergeList = {}
     for row = 1, 4 do
         for column = 1, 4 do
