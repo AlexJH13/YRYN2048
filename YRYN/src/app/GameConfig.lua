@@ -51,6 +51,8 @@ function GameCofig:ctor()
     }
     self._actionTime = 0.1
     self._cellScaleRange = 1.2
+    self._touchMoveDis = 100
+    self._moveSpeed = 2500 --每秒
 end
 
 return GameCofig

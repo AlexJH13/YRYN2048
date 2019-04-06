@@ -12,6 +12,13 @@ GameScene.Direction = {
     RIGHT = 3
 }
 
+GameScene.DirectionString = {
+    [0] = "UP",
+    [1] = "DOWN",
+    [2] = "LEFT",
+    [3] = "RIGHT"
+}
+
 function GameScene:onCreate()
     self._config = require("app.GameConfig"):create()
     self._vSize = cc.Director:getInstance():getVisibleSize()
@@ -22,11 +29,28 @@ function GameScene:onCreate()
     self._cellMatrix = {}
     self._moveList = {}
     self._mergeList = {}
+    self._touchStartPos = nil
+    self._touchActive = true
+    self._scoreLabel = nil
+    self._score = 0
 
     self:addBg()
     self:addGameBg()
     self:addCellBg()
+    self:addScoreLabel()
     self:gameStart()
+end
+
+function GameScene:addScoreLabel()
+    self._scoreLabel = cc.Label:createWithSystemFont("0", "Arial", 90)
+    self._scoreLabel:setTextColor(cc.c4b(0, 0, 0, 255))
+    self._scoreLabel:setPosition(self._vSize.width / 2, self._vSize.height -200)
+    self:addChild(self._scoreLabel)
+end
+
+function GameScene:addScore(score)
+    self._score = self._score + score
+    self._scoreLabel:setString(self._score)
 end
 
 function GameScene:gameStart()
@@ -39,52 +63,48 @@ function GameScene:gameStart()
 end
 
 function GameScene:startGestureListen()
-    self:testMoveUI()
+    local function onTouchBegan(touch, event)
+        self._touchStartPos = touch:getLocation()
+        self._touchActive = true
+        return true
+    end
+
+    local function onTouchMoved(touch, event)
+        if self._touchActive then
+            local movePos = touch:getLocation()
+            if movePos.y - self._touchStartPos.y > self._config._touchMoveDis then
+                --up
+                self:moveAndCheckAddNewCell(GameScene.Direction.UP)
+                self._touchActive = false
+            elseif self._touchStartPos.y - movePos.y > self._config._touchMoveDis then
+                --down
+                self:moveAndCheckAddNewCell(GameScene.Direction.DOWN)
+                self._touchActive = false
+            elseif movePos.x - self._touchStartPos.x > self._config._touchMoveDis then
+                --right
+                self:moveAndCheckAddNewCell(GameScene.Direction.RIGHT)
+                self._touchActive = false
+            elseif self._touchStartPos.x - movePos.x > self._config._touchMoveDis then
+                --left
+                self:moveAndCheckAddNewCell(GameScene.Direction.LEFT)
+                self._touchActive = false
+            end
+        end
+    end
+
+    local function onTouchEnded(touch, event)
+    end
+    local listener = cc.EventListenerTouchOneByOne:create()
+    listener:registerScriptHandler(onTouchBegan, cc.Handler.EVENT_TOUCH_BEGAN)
+    listener:registerScriptHandler(onTouchMoved, cc.Handler.EVENT_TOUCH_MOVED)
+    listener:registerScriptHandler(onTouchEnded, cc.Handler.EVENT_TOUCH_ENDED)
+    cc.Director:getInstance():getEventDispatcher():addEventListenerWithSceneGraphPriority(listener, self)
 end
 
-function GameScene:testMoveUI()
-    local menu = cc.Menu:create()
-    local menuItemLeft = cc.MenuItemFont:create("Left")
-    local function left(sender)
-        -- self:moveToLeft()
-        self:move(GameScene.Direction.LEFT)
+function GameScene:moveAndCheckAddNewCell(direction)
+    if self:move(direction) then
         self:addNewCell()
     end
-    menuItemLeft:registerScriptTapHandler(left)
-    menuItemLeft:setPosition(100, 100)
-    menu:addChild(menuItemLeft)
-
-    local menuItemRight = cc.MenuItemFont:create("Right")
-    local function right(sender)
-        -- self:moveToRight()
-        self:move(GameScene.Direction.RIGHT)
-        self:addNewCell()
-    end
-    menuItemRight:registerScriptTapHandler(right)
-    menuItemRight:setPosition(200, 100)
-    menu:addChild(menuItemRight)
-
-    local menuItemUp = cc.MenuItemFont:create("Up")
-    local function up(sender)
-        -- self:moveToUp()
-        self:move(GameScene.Direction.UP)
-    end
-    menuItemUp:registerScriptTapHandler(up)
-    menuItemUp:setPosition(150, 150)
-    menu:addChild(menuItemUp)
-
-    local menuItemDown = cc.MenuItemFont:create("Down")
-    local function down(sender)
-        -- self:moveToDown()
-        self:move(GameScene.Direction.DOWN)
-    end
-    menuItemDown:registerScriptTapHandler(down)
-    menuItemDown:setPosition(150, 50)
-    menu:addChild(menuItemDown)
-
-    menu:setColor(cc.c4f(1, 1, 1, 1))
-
-    self._gameBg:addChild(menu)
 end
 
 function GameScene:move(direction)
@@ -92,12 +112,23 @@ function GameScene:move(direction)
     self:initMoveData(direction)
     --判断是否有合并的情况
     self:initMergeData(direction)
-    self:checkAndRunMove()
+    local changeFlag1 = self:checkAndRunMove()
     --合并后还要检查一次是否还能移动
     self:initMoveData(direction)
     self._mergeList = {}
-    self:checkAndRunMove()
+    local changeFlag2 = self:checkAndRunMove()
+    if not changeFlag1 and not changeFlag2 then
+        return false
+    end
+    return true
+end
 
+function GameScene:printValueMatrix()
+    print("_cellValueMatrix = {")
+    for i = 1, 4 do
+        print(self._cellValueMatrix[i][1].." "..self._cellValueMatrix[i][2].." "..self._cellValueMatrix[i][3].." "..self._cellValueMatrix[i][4])
+    end
+    print("}")
 end
 
 function GameScene:initMoveData(direction)
@@ -145,7 +176,7 @@ function GameScene:initMoveData(direction)
             for column = columnStart, columnEnd, columnAdd do
                 if self._cellValueMatrix[row][column] ~= 0 then
                     self:checkMoveDataLogic(row, column, direction)
-                    break
+                    -- break
                 end
             end
         end
@@ -154,7 +185,7 @@ function GameScene:initMoveData(direction)
             for row = rowStart, rowEnd, rowAdd do
                 if self._cellValueMatrix[row][column] ~= 0 then
                     self:checkMoveDataLogic(row, column, direction)
-                    break
+                    -- break
                 end
             end
         end
@@ -252,6 +283,7 @@ function GameScene:initMergeData(direction)
                 if column ~= 4 then
                     if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row][column + 1] then
                         self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
+                        self:addScore(self._cellValueMatrix[row][column])
                         self._cellValueMatrix[row][column + 1] = 0
                         local doubleCell = {
                             row = row,
@@ -276,10 +308,11 @@ function GameScene:initMergeData(direction)
         end
     elseif direction == GameScene.Direction.RIGHT then
         for row = 1, 4 do
-            for column = 4, 1 do
+            for column = 4, 1, -1 do
                 if column ~= 1 then
                     if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row][column - 1] then
                         self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
+                        self:addScore(self._cellValueMatrix[row][column])
                         self._cellValueMatrix[row][column - 1] = 0
                         local doubleCell = {
                             row = row,
@@ -308,6 +341,7 @@ function GameScene:initMergeData(direction)
                 if row ~= 4 then
                     if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row + 1][column] then
                         self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
+                        self:addScore(self._cellValueMatrix[row][column])
                         self._cellValueMatrix[row + 1][column] = 0
                         local doubleCell = {
                             row = row,
@@ -332,10 +366,11 @@ function GameScene:initMergeData(direction)
         end
     elseif direction == GameScene.Direction.DOWN then
         for column = 1, 4 do
-            for row = 4, 1 do
+            for row = 4, 1, -1 do
                 if row ~= 1 then
                     if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row - 1][column] then
                         self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
+                        self:addScore(self._cellValueMatrix[row][column])
                         self._cellValueMatrix[row - 1][column] = 0
                         local doubleCell = {
                             row = row,
@@ -361,95 +396,18 @@ function GameScene:initMergeData(direction)
     end
 end
 
-function GameScene:moveToLeft()
-    --往左移的将两个矩阵的值更新，并将动画参数储存
-    self:initMoveLeftData()
-    --判断是否有合并的情况
-    self:initMergeData()
-    self:checkAndRunMove()
-    --合并后还要检查一次是否还能移动
-    self:initMoveLeftData()
-    self._mergeList = {}
-    self:checkAndRunMove()
-end
-
-function GameScene:moveToRight()
-end
-
-function GameScene:moveToUp()
-end
-
-function GameScene:moveToDown()
-end
-
-function GameScene:initMoveLeftData()
-    self._moveList = {}
-    for row = 1, 4 do
-        for column = 1,4 do
-            if self._cellValueMatrix[row][column] ~= 0 then
-                local moveToColumn = column
-                if column ~= 1 then
-                    for ci = column - 1, 1, -1 do
-                        if self._cellValueMatrix[row][ci] == 0 then
-                            moveToColumn = ci
-                        end
-                    end
-                end
-                if moveToColumn ~= column then 
-                    local move = {}
-                    move.cell = self._cellMatrix[row][column]
-                    move.targetIdx = {
-                        row = row,
-                        column = moveToColumn
-                    }
-                    move.merge = false
-                    table.insert( self._moveList, move)
-                    self._cellValueMatrix[row][moveToColumn] = self._cellValueMatrix[row][column]
-                    self._cellMatrix[row][moveToColumn] = self._cellMatrix[row][column]
-                    self._cellValueMatrix[row][column] = 0
-                    self._cellMatrix[row][column] = nil 
-                end
-            end
-        end
-    end
-end
-
-function GameScene:initMergeDataLeft()
-    self._mergeList = {}
-    for row = 1, 4 do
-        for column = 1, 4 do
-            if column ~= 4 then
-                if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row][column + 1] then
-                    self._cellValueMatrix[row][column] = self._cellValueMatrix[row][column] * 2
-                    self._cellValueMatrix[row][column + 1] = 0
-                    local doubleCell = {
-                        row = row,
-                        column = column
-                    }
-                    local findMoveCell = false
-                    for k,v in pairs(self._moveList) do
-                        if v.targetIdx.row == row and v.targetIdx.column == column + 1 then
-                            v.merge = true
-                            findMoveCell = true
-                            break
-                        end
-                    end
-                    if not findMoveCell then
-                        self._cellMatrix[row][column + 1]:removeFromParent()
-                    end
-                    table.insert(self._mergeList, doubleCell)
-                    self._cellMatrix[row][column + 1] = nil
-                end
-            end
-        end
-    end
-end
-
 function GameScene:checkAndRunMove()
+    if table.maxn(self._moveList) == 0 and table.maxn(self._mergeList) == 0 then
+        return false
+    end
     for k,v in pairs(self._moveList) do
         local targetPos = self:getCellPosition(v.targetIdx.row, v.targetIdx.column)
         local targetCellSp = v.cell
-        local moveTo = cc.MoveTo:create(self._config._actionTime, targetPos)
+        local nowPos = cc.p(0, 0)
+        nowPos.x, nowPos.y = targetCellSp:getPosition()
+        local dis = cc.pGetDistance(nowPos, targetPos)
+        local moveTo = cc.MoveTo:create(dis / self._config._moveSpeed, targetPos)
+        targetCellSp:stopAllActions()
         if v.merge then
             local removeSelf = cc.RemoveSelf:create()
             local seq = cc.Sequence:create(moveTo, removeSelf)
@@ -472,7 +430,7 @@ function GameScene:checkAndRunMove()
         local seq = cc.Sequence:create(scaleToBig, scaleToNormal)
         newCell:runAction(seq)
     end
-    
+    return true
 end
 
 function GameScene:initCells()
@@ -518,6 +476,17 @@ function GameScene:addNewCell()
         self._gameBg:addChild(cellSp)
         self._cellValueMatrix[cleanCells[idx].row][cleanCells[idx].column] = value
         self._cellMatrix[cleanCells[idx].row][cleanCells[idx].column] = cellSp
+        --显示出来的动画
+        cellSp:setVisible(false)
+        cellSp:setScale(0.7)
+        local function callback(cell)
+            cell:setVisible(true)
+        end
+        local callFunN = cc.CallFunc:create(callback)
+        local delay = cc.DelayTime:create(self._config._actionTime)
+        local scaleTo = cc.ScaleTo:create(self._config._actionTime, 1)
+        local seq = cc.Sequence:create(delay, callFunN, scaleTo)
+        cellSp:runAction(seq)
     else
         self:gameOver()
     end
@@ -527,11 +496,22 @@ function GameScene:createValueCell(value)
     local cell = self:createColorRoundRectSprite(self._config._cell.contentSize,
                                                  self._config._cell.valueColor[value],
                                                  self._config._cell.radius)
-    local cellLabel = cc.Label:createWithSystemFont(value, "Arial", 90)
+    local fontSize = 90
+    local valueNum = tonumber(value)
+    local outlineSize = 5
+    if valueNum / 1000 >= 1 then
+        fontSize = 50
+        outlineSize = 2
+    elseif valueNum / 1000 < 1 and valueNum / 100 >= 1 then
+        fontSize = 70
+        outlineSize = 4
+    end
+
+    local cellLabel = cc.Label:createWithSystemFont(value, "Arial", fontSize)
     cellLabel:setPosition(self._config._cell.contentSize.width / 2, self._config._cell.contentSize.height / 2)
     local color4b = cc.c4b(self._config._cell.fontColor[value].r, self._config._cell.fontColor[value].g, self._config._cell.fontColor[value].b, 255)
     cellLabel:setTextColor(color4b)
-    cellLabel:enableOutline(color4b, 5)
+    cellLabel:enableOutline(color4b, outlineSize)
     cell:addChild(cellLabel)
     return cell
 end
