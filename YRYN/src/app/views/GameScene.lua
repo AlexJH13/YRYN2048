@@ -117,46 +117,86 @@ function GameScene:moveAndCheckAddNewCell(direction)
     if self:move(direction) then
         self:addNewCell()
     else
-        local cleanCells = {}
+        self:checkGameOver()
+    end
+end
+
+function GameScene:checkGameOver()
+    local cleanCells = {}
+    for row = 1, 4 do
+        for column = 1,4 do
+            if self._cellValueMatrix[row][column] == 0 then
+                local cell = {}
+                cell.row = row
+                cell.column = column
+                table.insert(cleanCells, cell)
+            end
+        end
+    end
+    local cleanCellsCount = table.maxn(cleanCells)
+    if cleanCellsCount == 0 then
+        if self:checkHasMergeCell(GameScene.Direction.UP) then
+            return
+        end
+
+        if self:checkHasMergeCell(GameScene.Direction.DOWN) then
+            return
+        end
+
+        if self:checkHasMergeCell(GameScene.Direction.LEFT) then
+            return
+        end
+
+        if self:checkHasMergeCell(GameScene.Direction.RIGHT) then
+            return
+        end
+        self:gameOver()
+    end
+end
+
+function GameScene:checkHasMergeCell(direction)
+    if direction == GameScene.Direction.LEFT then
         for row = 1, 4 do
-            for column = 1,4 do
-                if self._cellValueMatrix[row][column] == 0 then
-                    local cell = {}
-                    cell.row = row
-                    cell.column = column
-                    table.insert(cleanCells, cell)
+            for column = 1, 4 do
+                if column ~= 4 then
+                    if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row][column + 1] then
+                        return true
+                    end
                 end
             end
         end
-        local cleanCellsCount = table.maxn(cleanCells)
-        if cleanCellsCount == 0 then
-            -- self._mergeList = {}            
-            -- self:initMergeData(GameScene.Direction.UP)
-            -- if table.maxn(self._mergeList) ~= 0 then
-            --     return
-            -- end
-
-            -- self._mergeList = {}            
-            -- self:initMergeData(GameScene.Direction.LEFT)
-            -- if table.maxn(self._mergeList) ~= 0 then
-            --     return
-            -- end
-
-            -- self._mergeList = {}            
-            -- self:initMergeData(GameScene.Direction.RIGHT)
-            -- if table.maxn(self._mergeList) ~= 0 then
-            --     return
-            -- end
-
-            -- self._mergeList = {}            
-            -- self:initMergeData(GameScene.Direction.DOWN)
-            -- if table.maxn(self._mergeList) ~= 0 then
-            --     return
-            -- end
-            -- self._mergeList = {}
-            -- self:gameOver()
+    elseif direction == GameScene.Direction.RIGHT then
+        for row = 1, 4 do
+            for column = 4, 1, -1 do
+                if column ~= 1 then
+                    if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row][column - 1] then
+                        return true
+                    end
+                end
+            end
+        end
+    elseif direction == GameScene.Direction.UP then
+        for column = 1, 4 do
+            for row = 1, 4 do
+                if row ~= 4 then
+                    if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row + 1][column] then
+                       return true
+                    end
+                end
+            end
+        end
+    elseif direction == GameScene.Direction.DOWN then
+        for column = 1, 4 do
+            for row = 4, 1, -1 do
+                if row ~= 1 then
+                    if self._cellValueMatrix[row][column] ~= 0 and self._cellValueMatrix[row][column] == self._cellValueMatrix[row - 1][column] then
+                        return true
+                    end
+                end
+            end
         end
     end
+    return false
 end
 
 function GameScene:move(direction)
@@ -635,6 +675,7 @@ function GameScene:restartClick()
             self._cellValueMatrix[row][column] = 0
         end
     end
+    self:gameStart()
 end
 
 function GameScene:addCellBg()
