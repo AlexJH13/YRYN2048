@@ -33,11 +33,15 @@ function GameScene:onCreate()
     self._touchActive = true
     self._scoreLabel = nil
     self._score = 0
+    self._gameOverNodeActive = false
+    self._restartItem = nil
+    self._gameOverBgNode = nil
 
     self:addBg()
     self:addGameBg()
     self:addCellBg()
     self:addScoreLabel()
+    self:startGestureListen()
     self:gameStart()
 end
 
@@ -58,41 +62,49 @@ function GameScene:gameStart()
     for i = 1, 2 do
         self:addNewCell()
     end
-   
-    self:startGestureListen()
 end
 
 function GameScene:startGestureListen()
     local function onTouchBegan(touch, event)
-        self._touchStartPos = touch:getLocation()
-        self._touchActive = true
+        if not self._gameOverNodeActive then
+            self._touchStartPos = touch:getLocation()
+            self._touchActive = true
+        end
         return true
     end
 
     local function onTouchMoved(touch, event)
-        if self._touchActive then
-            local movePos = touch:getLocation()
-            if movePos.y - self._touchStartPos.y > self._config._touchMoveDis then
-                --up
-                self:moveAndCheckAddNewCell(GameScene.Direction.UP)
-                self._touchActive = false
-            elseif self._touchStartPos.y - movePos.y > self._config._touchMoveDis then
-                --down
-                self:moveAndCheckAddNewCell(GameScene.Direction.DOWN)
-                self._touchActive = false
-            elseif movePos.x - self._touchStartPos.x > self._config._touchMoveDis then
-                --right
-                self:moveAndCheckAddNewCell(GameScene.Direction.RIGHT)
-                self._touchActive = false
-            elseif self._touchStartPos.x - movePos.x > self._config._touchMoveDis then
-                --left
-                self:moveAndCheckAddNewCell(GameScene.Direction.LEFT)
-                self._touchActive = false
+        if not self._gameOverNodeActive then
+            if self._touchActive then
+                local movePos = touch:getLocation()
+                if movePos.y - self._touchStartPos.y > self._config._touchMoveDis then
+                    --up
+                    self:moveAndCheckAddNewCell(GameScene.Direction.UP)
+                    self._touchActive = false
+                elseif self._touchStartPos.y - movePos.y > self._config._touchMoveDis then
+                    --down
+                    self:moveAndCheckAddNewCell(GameScene.Direction.DOWN)
+                    self._touchActive = false
+                elseif movePos.x - self._touchStartPos.x > self._config._touchMoveDis then
+                    --right
+                    self:moveAndCheckAddNewCell(GameScene.Direction.RIGHT)
+                    self._touchActive = false
+                elseif self._touchStartPos.x - movePos.x > self._config._touchMoveDis then
+                    --left
+                    self:moveAndCheckAddNewCell(GameScene.Direction.LEFT)
+                    self._touchActive = false
+                end
             end
         end
     end
 
     local function onTouchEnded(touch, event)
+        if self._gameOverNodeActive then
+            local pos = touch:getLocation()
+            if cc.rectContainsPoint(self._restartItem:getBoundingBox(), pos) then
+                self:restartClick()
+            end
+        end
     end
     local listener = cc.EventListenerTouchOneByOne:create()
     listener:registerScriptHandler(onTouchBegan, cc.Handler.EVENT_TOUCH_BEGAN)
@@ -104,6 +116,46 @@ end
 function GameScene:moveAndCheckAddNewCell(direction)
     if self:move(direction) then
         self:addNewCell()
+    else
+        local cleanCells = {}
+        for row = 1, 4 do
+            for column = 1,4 do
+                if self._cellValueMatrix[row][column] == 0 then
+                    local cell = {}
+                    cell.row = row
+                    cell.column = column
+                    table.insert(cleanCells, cell)
+                end
+            end
+        end
+        local cleanCellsCount = table.maxn(cleanCells)
+        if cleanCellsCount == 0 then
+            -- self._mergeList = {}            
+            -- self:initMergeData(GameScene.Direction.UP)
+            -- if table.maxn(self._mergeList) ~= 0 then
+            --     return
+            -- end
+
+            -- self._mergeList = {}            
+            -- self:initMergeData(GameScene.Direction.LEFT)
+            -- if table.maxn(self._mergeList) ~= 0 then
+            --     return
+            -- end
+
+            -- self._mergeList = {}            
+            -- self:initMergeData(GameScene.Direction.RIGHT)
+            -- if table.maxn(self._mergeList) ~= 0 then
+            --     return
+            -- end
+
+            -- self._mergeList = {}            
+            -- self:initMergeData(GameScene.Direction.DOWN)
+            -- if table.maxn(self._mergeList) ~= 0 then
+            --     return
+            -- end
+            -- self._mergeList = {}
+            -- self:gameOver()
+        end
     end
 end
 
@@ -176,7 +228,6 @@ function GameScene:initMoveData(direction)
             for column = columnStart, columnEnd, columnAdd do
                 if self._cellValueMatrix[row][column] ~= 0 then
                     self:checkMoveDataLogic(row, column, direction)
-                    -- break
                 end
             end
         end
@@ -185,7 +236,6 @@ function GameScene:initMoveData(direction)
             for row = rowStart, rowEnd, rowAdd do
                 if self._cellValueMatrix[row][column] ~= 0 then
                     self:checkMoveDataLogic(row, column, direction)
-                    -- break
                 end
             end
         end
@@ -517,6 +567,74 @@ function GameScene:createValueCell(value)
 end
 
 function GameScene:gameOver()
+    self:addGameOverNode()
+end
+
+function GameScene:addGameOverNode()
+    self._gameOverNodeActive = true
+    local nodeSize = self._vSize
+    local bgColor = cc.c3b(249, 245, 235)
+
+    self._gameOverBgNode = self:createColorRectSprite(nodeSize, bgColor)
+    self._gameOverBgNode:setPosition(self._vSize.width / 2, self._vSize.height / 2)
+    self:addChild(self._gameOverBgNode)
+
+    local gameOverText= cc.Label:createWithSystemFont("Game Over!", "Arial", 110)
+    gameOverText:setTextColor(cc.c4b(99, 91, 82, 255))
+    gameOverText:setPosition(self._vSize.width / 2, self._vSize.height - 150)
+    gameOverText:enableOutline(cc.c4b(99, 91, 82, 255), 3)
+    self._gameOverBgNode:addChild(gameOverText)
+
+    local itemBgSize = cc.size(500, 200)
+    local itemBgColor = cc.c3b(172, 156, 142)
+    local itemRadius = 15
+    local scoreBg = self:createColorRoundRectSprite(itemBgSize, itemBgColor, itemRadius)
+    scoreBg:setPosition(self._vSize.width / 2, self._vSize.height - 400)
+    self._gameOverBgNode:addChild(scoreBg)
+
+    local scoreText = cc.Label:createWithSystemFont("分数", "Arial", 55)
+    scoreText:setTextColor(cc.c4b(233, 221, 203, 255))
+    scoreText:setPosition(itemBgSize.width / 2, itemBgSize.height - 50)
+    scoreText:enableOutline(cc.c4b(233, 221, 203, 255), 1)
+    scoreBg:addChild(scoreText)
+
+    local scoreLabel = cc.Label:createWithSystemFont(self._score, "Arial", 70)
+    scoreLabel:setTextColor(cc.c4b(254, 254, 254, 255))
+    scoreLabel:setPosition(itemBgSize.width / 2, 60)
+    scoreLabel:enableOutline(cc.c4b(254, 254, 254, 255), 2)
+    scoreBg:addChild(scoreLabel)
+
+    self._restartItem = self:createColorRoundRectSprite(itemBgSize, itemBgColor, itemRadius)
+    self._restartItem:setPosition(self._vSize.width / 2, self._vSize.height - 800)
+    self._gameOverBgNode:addChild(self._restartItem)
+
+    local restartText = cc.Label:createWithSystemFont("重新开始", "Arial", 75)
+    restartText:setTextColor(cc.c4b(254, 254, 254, 255))
+    restartText:setPosition(itemBgSize.width / 2, itemBgSize.height / 2)
+    restartText:enableOutline(cc.c4b(254, 254, 254, 255), 1)
+    self._restartItem:addChild(restartText)
+
+    local fadeIn = cc.FadeIn:create(0.2)
+    self._gameOverBgNode:runAction(fadeIn)
+end
+
+function GameScene:restartClick()
+    self._gameOverBgNode:removeFromParent()
+    self._gameOverBgNode = nil
+    self._gameOverNodeActive = false
+    self._restartItem = nil
+    self._score = 0
+    self._scoreLabel:setString("0")
+
+    for row = 1, 4 do
+        for column = 1, 4 do
+            if self._cellMatrix[row][column] ~= nil then
+                self._cellMatrix[row][column]:removeFromParent()
+                self._cellMatrix[row][column] = nil
+            end
+            self._cellValueMatrix[row][column] = 0
+        end
+    end
 end
 
 function GameScene:addCellBg()
