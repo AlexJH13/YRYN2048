@@ -1,11 +1,11 @@
 --[[
-    GameCofig
+    Game2048Config
     Author:夏阳
     Des:用于游戏配置的静态信息
 ]]
-local GameCofig = class("GameCofig")
+local Game2048Config = class("Game2048Config")
 
-function GameCofig:ctor()
+function Game2048Config:ctor()
     self._bgColor = cc.c3b(249, 247, 234)
     self._gameBg = {
         color = cc.c3b(173, 157, 143),
@@ -55,4 +55,4 @@ function GameCofig:ctor()
     self._moveSpeed = 2500 --每秒
 end
 
-return GameCofig
+return Game2048Config

@@ -1,26 +1,26 @@
 --[[
-    GameScene
+    GameScene2048
     Author:夏阳
-    Des:游戏主场景
+    Des:2048游戏主场景
 ]]
-local GameScene = class("GameScene", cc.load("mvc").ViewBase)
+local GameScene2048 = class("GameScene2048", cc.load("mvc").ViewBase)
 
-GameScene.Direction = {
+GameScene2048.Direction = {
     UP = 0,
     DOWN = 1,
     LEFT = 2,
     RIGHT = 3
 }
 
-GameScene.DirectionString = {
+GameScene2048.DirectionString = {
     [0] = "UP",
     [1] = "DOWN",
     [2] = "LEFT",
     [3] = "RIGHT"
 }
 
-function GameScene:onCreate()
-    self._config = require("app.GameConfig"):create()
+function GameScene2048:onCreate()
+    self._config = require("app.2048.Game2048Config"):create()
     self._vSize = cc.Director:getInstance():getVisibleSize()
     self._gameBg = nil 
     -- 一个 4 x 4的矩阵，标示着cell上面的值
@@ -45,26 +45,26 @@ function GameScene:onCreate()
     self:gameStart()
 end
 
-function GameScene:addScoreLabel()
+function GameScene2048:addScoreLabel()
     self._scoreLabel = cc.Label:createWithSystemFont("0", "Arial", 90)
     self._scoreLabel:setTextColor(cc.c4b(0, 0, 0, 255))
     self._scoreLabel:setPosition(self._vSize.width / 2, self._vSize.height -200)
     self:addChild(self._scoreLabel)
 end
 
-function GameScene:addScore(score)
+function GameScene2048:addScore(score)
     self._score = self._score + score
     self._scoreLabel:setString(self._score)
 end
 
-function GameScene:gameStart()
+function GameScene2048:gameStart()
     self:initCells()
     for i = 1, 2 do
         self:addNewCell()
     end
 end
 
-function GameScene:startGestureListen()
+function GameScene2048:startGestureListen()
     local function onTouchBegan(touch, event)
         if not self._gameOverNodeActive then
             self._touchStartPos = touch:getLocation()
@@ -79,19 +79,19 @@ function GameScene:startGestureListen()
                 local movePos = touch:getLocation()
                 if movePos.y - self._touchStartPos.y > self._config._touchMoveDis then
                     --up
-                    self:moveAndCheckAddNewCell(GameScene.Direction.UP)
+                    self:moveAndCheckAddNewCell(GameScene2048.Direction.UP)
                     self._touchActive = false
                 elseif self._touchStartPos.y - movePos.y > self._config._touchMoveDis then
                     --down
-                    self:moveAndCheckAddNewCell(GameScene.Direction.DOWN)
+                    self:moveAndCheckAddNewCell(GameScene2048.Direction.DOWN)
                     self._touchActive = false
                 elseif movePos.x - self._touchStartPos.x > self._config._touchMoveDis then
                     --right
-                    self:moveAndCheckAddNewCell(GameScene.Direction.RIGHT)
+                    self:moveAndCheckAddNewCell(GameScene2048.Direction.RIGHT)
                     self._touchActive = false
                 elseif self._touchStartPos.x - movePos.x > self._config._touchMoveDis then
                     --left
-                    self:moveAndCheckAddNewCell(GameScene.Direction.LEFT)
+                    self:moveAndCheckAddNewCell(GameScene2048.Direction.LEFT)
                     self._touchActive = false
                 end
             end
@@ -113,7 +113,7 @@ function GameScene:startGestureListen()
     cc.Director:getInstance():getEventDispatcher():addEventListenerWithSceneGraphPriority(listener, self)
 end
 
-function GameScene:moveAndCheckAddNewCell(direction)
+function GameScene2048:moveAndCheckAddNewCell(direction)
     if self:move(direction) then
         self:addNewCell()
     else
@@ -121,7 +121,7 @@ function GameScene:moveAndCheckAddNewCell(direction)
     end
 end
 
-function GameScene:checkGameOver()
+function GameScene2048:checkGameOver()
     local cleanCells = {}
     for row = 1, 4 do
         for column = 1,4 do
@@ -135,27 +135,27 @@ function GameScene:checkGameOver()
     end
     local cleanCellsCount = table.maxn(cleanCells)
     if cleanCellsCount == 0 then
-        if self:checkHasMergeCell(GameScene.Direction.UP) then
+        if self:checkHasMergeCell(GameScene2048.Direction.UP) then
             return
         end
 
-        if self:checkHasMergeCell(GameScene.Direction.DOWN) then
+        if self:checkHasMergeCell(GameScene2048.Direction.DOWN) then
             return
         end
 
-        if self:checkHasMergeCell(GameScene.Direction.LEFT) then
+        if self:checkHasMergeCell(GameScene2048.Direction.LEFT) then
             return
         end
 
-        if self:checkHasMergeCell(GameScene.Direction.RIGHT) then
+        if self:checkHasMergeCell(GameScene2048.Direction.RIGHT) then
             return
         end
         self:gameOver()
     end
 end
 
-function GameScene:checkHasMergeCell(direction)
-    if direction == GameScene.Direction.LEFT then
+function GameScene2048:checkHasMergeCell(direction)
+    if direction == GameScene2048.Direction.LEFT then
         for row = 1, 4 do
             for column = 1, 4 do
                 if column ~= 4 then
@@ -165,7 +165,7 @@ function GameScene:checkHasMergeCell(direction)
                 end
             end
         end
-    elseif direction == GameScene.Direction.RIGHT then
+    elseif direction == GameScene2048.Direction.RIGHT then
         for row = 1, 4 do
             for column = 4, 1, -1 do
                 if column ~= 1 then
@@ -175,7 +175,7 @@ function GameScene:checkHasMergeCell(direction)
                 end
             end
         end
-    elseif direction == GameScene.Direction.UP then
+    elseif direction == GameScene2048.Direction.UP then
         for column = 1, 4 do
             for row = 1, 4 do
                 if row ~= 4 then
@@ -185,7 +185,7 @@ function GameScene:checkHasMergeCell(direction)
                 end
             end
         end
-    elseif direction == GameScene.Direction.DOWN then
+    elseif direction == GameScene2048.Direction.DOWN then
         for column = 1, 4 do
             for row = 4, 1, -1 do
                 if row ~= 1 then
@@ -199,7 +199,7 @@ function GameScene:checkHasMergeCell(direction)
     return false
 end
 
-function GameScene:move(direction)
+function GameScene2048:move(direction)
     --将两个矩阵的值更新，并将动画参数储存
     self:initMoveData(direction)
     --判断是否有合并的情况
@@ -215,7 +215,7 @@ function GameScene:move(direction)
     return true
 end
 
-function GameScene:printValueMatrix()
+function GameScene2048:printValueMatrix()
     print("_cellValueMatrix = {")
     for i = 1, 4 do
         print(self._cellValueMatrix[i][1].." "..self._cellValueMatrix[i][2].." "..self._cellValueMatrix[i][3].." "..self._cellValueMatrix[i][4])
@@ -223,7 +223,7 @@ function GameScene:printValueMatrix()
     print("}")
 end
 
-function GameScene:initMoveData(direction)
+function GameScene2048:initMoveData(direction)
     self._moveList = {}
     local rowStart = 0
     local rowEnd = 0
@@ -233,28 +233,28 @@ function GameScene:initMoveData(direction)
     local columnEnd = 0
     local columnAdd = 0
 
-    if direction == GameScene.Direction.LEFT then
+    if direction == GameScene2048.Direction.LEFT then
         rowStart = 1
         rowEnd = 4
         rowAdd = 1
         columnStart = 1
         columnEnd = 4
         columnAdd = 1
-    elseif direction == GameScene.Direction.RIGHT then
+    elseif direction == GameScene2048.Direction.RIGHT then
         rowStart = 1
         rowEnd = 4
         rowAdd = 1
         columnStart = 4
         columnEnd = 1
         columnAdd = -1
-    elseif direction == GameScene.Direction.UP then
+    elseif direction == GameScene2048.Direction.UP then
         rowStart = 1
         rowEnd = 4
         rowAdd = 1
         columnStart = 1
         columnEnd = 4
         columnAdd = 1
-    elseif direction == GameScene.Direction.DOWN then
+    elseif direction == GameScene2048.Direction.DOWN then
         rowStart = 4
         rowEnd = 1
         rowAdd = -1
@@ -263,7 +263,7 @@ function GameScene:initMoveData(direction)
         columnAdd = 1
     end
 
-    if direction == GameScene.Direction.LEFT or direction == GameScene.Direction.RIGHT then
+    if direction == GameScene2048.Direction.LEFT or direction == GameScene2048.Direction.RIGHT then
         for row = rowStart, rowEnd, rowAdd do
             for column = columnStart, columnEnd, columnAdd do
                 if self._cellValueMatrix[row][column] ~= 0 then
@@ -271,7 +271,7 @@ function GameScene:initMoveData(direction)
                 end
             end
         end
-    elseif direction == GameScene.Direction.UP or direction == GameScene.Direction.DOWN then
+    elseif direction == GameScene2048.Direction.UP or direction == GameScene2048.Direction.DOWN then
         for column = columnStart, columnEnd, columnAdd do
             for row = rowStart, rowEnd, rowAdd do
                 if self._cellValueMatrix[row][column] ~= 0 then
@@ -282,20 +282,20 @@ function GameScene:initMoveData(direction)
     end
 end
 
-function GameScene:checkMoveDataLogic(row, column, direction)
+function GameScene2048:checkMoveDataLogic(row, column, direction)
     local ciStart = 0
     local ciEnd = 0
     local ciAdd = 0
-    if direction == GameScene.Direction.LEFT or direction == GameScene.Direction.RIGHT then
+    if direction == GameScene2048.Direction.LEFT or direction == GameScene2048.Direction.RIGHT then
         local moveToColumn = column
         local columnStart = 0
 
-        if direction == GameScene.Direction.LEFT then
+        if direction == GameScene2048.Direction.LEFT then
             columnStart = 1
             ciStart = column - 1
             ciEnd = 1
             ciAdd = -1
-        elseif direction == GameScene.Direction.RIGHT then
+        elseif direction == GameScene2048.Direction.RIGHT then
             columnStart = 4
             ciStart = column + 1
             ciEnd = 4
@@ -324,15 +324,15 @@ function GameScene:checkMoveDataLogic(row, column, direction)
             self._cellValueMatrix[row][column] = 0
             self._cellMatrix[row][column] = nil 
         end
-    elseif direction == GameScene.Direction.UP or direction == GameScene.Direction.DOWN then
+    elseif direction == GameScene2048.Direction.UP or direction == GameScene2048.Direction.DOWN then
         local moveToRow = row
         local rowStart = 0
-        if direction == GameScene.Direction.UP then
+        if direction == GameScene2048.Direction.UP then
             rowStart = 1
             ciStart = row - 1
             ciEnd = 1
             ciAdd = -1
-        elseif direction == GameScene.Direction.DOWN then
+        elseif direction == GameScene2048.Direction.DOWN then
             rowStart = 4
             ciStart = row + 1
             ciEnd = 4
@@ -365,9 +365,9 @@ function GameScene:checkMoveDataLogic(row, column, direction)
 end
 
 
-function GameScene:initMergeData(direction)
+function GameScene2048:initMergeData(direction)
     self._mergeList = {}
-    if direction == GameScene.Direction.LEFT then
+    if direction == GameScene2048.Direction.LEFT then
         for row = 1, 4 do
             for column = 1, 4 do
                 if column ~= 4 then
@@ -396,7 +396,7 @@ function GameScene:initMergeData(direction)
                 end
             end
         end
-    elseif direction == GameScene.Direction.RIGHT then
+    elseif direction == GameScene2048.Direction.RIGHT then
         for row = 1, 4 do
             for column = 4, 1, -1 do
                 if column ~= 1 then
@@ -425,7 +425,7 @@ function GameScene:initMergeData(direction)
                 end
             end
         end
-    elseif direction == GameScene.Direction.UP then
+    elseif direction == GameScene2048.Direction.UP then
         for column = 1, 4 do
             for row = 1, 4 do
                 if row ~= 4 then
@@ -454,7 +454,7 @@ function GameScene:initMergeData(direction)
                 end
             end
         end
-    elseif direction == GameScene.Direction.DOWN then
+    elseif direction == GameScene2048.Direction.DOWN then
         for column = 1, 4 do
             for row = 4, 1, -1 do
                 if row ~= 1 then
@@ -486,7 +486,7 @@ function GameScene:initMergeData(direction)
     end
 end
 
-function GameScene:checkAndRunMove()
+function GameScene2048:checkAndRunMove()
     if table.maxn(self._moveList) == 0 and table.maxn(self._mergeList) == 0 then
         return false
     end
@@ -523,7 +523,7 @@ function GameScene:checkAndRunMove()
     return true
 end
 
-function GameScene:initCells()
+function GameScene2048:initCells()
     self._cellValueMatrix = {}
     self._cellMatrix = {}
     self._moveList = {}
@@ -540,7 +540,7 @@ function GameScene:initCells()
     end
 end
 
-function GameScene:addNewCell()
+function GameScene2048:addNewCell()
     --判断当前是否还有空间显示增加新的cell
     local cleanCells = {}
     for row = 1, 4 do
@@ -582,7 +582,7 @@ function GameScene:addNewCell()
     end
 end
 
-function GameScene:createValueCell(value)
+function GameScene2048:createValueCell(value)
     local cell = self:createColorRoundRectSprite(self._config._cell.contentSize,
                                                  self._config._cell.valueColor[value],
                                                  self._config._cell.radius)
@@ -606,11 +606,11 @@ function GameScene:createValueCell(value)
     return cell
 end
 
-function GameScene:gameOver()
+function GameScene2048:gameOver()
     self:addGameOverNode()
 end
 
-function GameScene:addGameOverNode()
+function GameScene2048:addGameOverNode()
     self._gameOverNodeActive = true
     local nodeSize = self._vSize
     local bgColor = cc.c3b(249, 245, 235)
@@ -654,11 +654,14 @@ function GameScene:addGameOverNode()
     restartText:enableOutline(cc.c4b(254, 254, 254, 255), 1)
     self._restartItem:addChild(restartText)
 
-    local fadeIn = cc.FadeIn:create(0.2)
-    self._gameOverBgNode:runAction(fadeIn)
+    local fadeIn = cc.FadeIn:create(0.5)
+    local delay = cc.DelayTime:create(1)
+    self._gameOverBgNode:setOpacity(0)
+    local seq = cc.Sequence:create(delay, fadeIn)
+    self._gameOverBgNode:runAction(seq)
 end
 
-function GameScene:restartClick()
+function GameScene2048:restartClick()
     self._gameOverBgNode:removeFromParent()
     self._gameOverBgNode = nil
     self._gameOverNodeActive = false
@@ -678,7 +681,7 @@ function GameScene:restartClick()
     self:gameStart()
 end
 
-function GameScene:addCellBg()
+function GameScene2048:addCellBg()
     -- 4行4列的cell
     for row = 1, 4 do
         for column = 1, 4 do
@@ -691,7 +694,7 @@ function GameScene:addCellBg()
     end
 end
 
-function GameScene:addGameBg()
+function GameScene2048:addGameBg()
     self._gameBg = self:createColorRoundRectSprite(self._config._gameBg.contentSize, 
                                                    self._config._gameBg.color, 
                                                    self._config._gameBg.radius)
@@ -699,13 +702,13 @@ function GameScene:addGameBg()
     self:addChild(self._gameBg)
 end
 
-function GameScene:addBg()
+function GameScene2048:addBg()
     local bgSprite = self:createColorRectSprite(self._vSize, self._config._bgColor)
     bgSprite:setPosition(self._vSize.width / 2, self._vSize.height / 2)
     self:addChild(bgSprite)
 end
 
-function GameScene:getCellPosition(row, column)
+function GameScene2048:getCellPosition(row, column)
     local x = self._config._cell.interval + self._config._cell.contentSize.width / 2 
             + (column - 1) * (self._config._cell.contentSize.width + self._config._cell.interval)
     local y = self._config._gameBg.contentSize.height 
@@ -714,7 +717,7 @@ function GameScene:getCellPosition(row, column)
     return cc.p(x, y)
 end
 
-function GameScene:createColorRectSprite(contentSize, color)
+function GameScene2048:createColorRectSprite(contentSize, color)
     local drawNode = cc.DrawNode:create()
     drawNode:setContentSize(contentSize)
     drawNode:setAnchorPoint(0.5, 0.5)
@@ -728,7 +731,7 @@ function GameScene:createColorRectSprite(contentSize, color)
     return drawNode
 end
 
-function GameScene:createColorRoundRectSprite(contentSize, color, radius)
+function GameScene2048:createColorRoundRectSprite(contentSize, color, radius)
     local drawNode = cc.DrawNode:create()
     drawNode:setContentSize(contentSize)
     drawNode:setAnchorPoint(0.5, 0.5)
@@ -756,4 +759,4 @@ function GameScene:createColorRoundRectSprite(contentSize, color, radius)
     return drawNode
 end
 
-return GameScene
+return GameScene2048

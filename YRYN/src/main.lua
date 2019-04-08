@@ -5,7 +5,12 @@ require "config"
 require "cocos.init"
 
 local function main()
-    require("app.MyApp"):create():run("GameScene")
+	local configs = {
+        viewsRoot  = "app",
+        modelsRoot = "app.models",
+        defaultSceneName = "MainScene",
+    }
+    require("app.MyApp"):create(configs):run("2048.GameScene2048")
 end
 
 local status, msg = xpcall(main, __G__TRACKBACK__)
