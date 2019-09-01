@@ -10,7 +10,9 @@ local function main()
         modelsRoot = "app.models",
         defaultSceneName = "MainScene",
     }
-    require("app.MyApp"):create(configs):run("2048.GameScene2048")
+    -- require("app.MyApp"):create(configs):run("2048.GameScene2048")
+
+    require("app.MyApp"):create(configs):run("CCZ.CCZGameScene")
 end
 
 local status, msg = xpcall(main, __G__TRACKBACK__)
